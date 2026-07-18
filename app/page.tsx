@@ -44,6 +44,10 @@ function displayOrder(emperor: Emperor) {
   return emperor.badge ?? `第 ${emperor.order} 代`;
 }
 
+function isFemaleEmperor(emperor: Emperor) {
+  return emperor.tag?.includes("女性天皇") ?? false;
+}
+
 type SearchResult =
   | { kind: "emperor"; emperor: Emperor }
   | { kind: "former"; house: FormerHouse };
@@ -249,6 +253,7 @@ export default function Home() {
                 <button
                   key={item.kind === "emperor" ? `emperor-${item.emperor.id}` : `former-${item.house.id}`}
                   type="button"
+                  className={item.kind === "emperor" && isFemaleEmperor(item.emperor) ? "is-female" : undefined}
                   onClick={() => {
                     if (item.kind === "emperor") focusNode(item.emperor.id, Math.max(zoom, 0.62));
                     else focusFormerHouse(item.house.id, Math.max(zoom, 0.54));
@@ -413,7 +418,7 @@ export default function Home() {
             return (
               <button
                 key={emperor.id}
-                className={`emperor-node ${active ? "is-active" : ""} ${selectedId === emperor.id ? "is-selected" : ""} ${dimmed ? "is-dimmed" : ""} ${emperor.badge ? "is-northern" : ""}`}
+                className={`emperor-node ${active ? "is-active" : ""} ${selectedId === emperor.id ? "is-selected" : ""} ${dimmed ? "is-dimmed" : ""} ${emperor.badge ? "is-northern" : ""} ${isFemaleEmperor(emperor) ? "is-female" : ""}`}
                 style={{ left: pos.x, top: pos.y, transform: `translateZ(${pos.z}px)` }}
                 onClick={(event) => {
                   event.stopPropagation();
@@ -508,13 +513,12 @@ export default function Home() {
           </div>
         </div>
 
-        {showFormerHouses && (
-          <div className="lineage-legend" aria-label="色分けの凡例">
-            <span><i className="legend-emperor" />歴代天皇</span>
-            <span><i className="legend-former" />旧宮家</span>
-            <small>順位は1947年の皇籍離脱直前</small>
-          </div>
-        )}
+        <div className="lineage-legend" aria-label="色分けの凡例">
+          <span><i className="legend-emperor" />歴代天皇</span>
+          <span><i className="legend-female" />女性天皇名（8人・10代）</span>
+          {showFormerHouses && <span><i className="legend-former" />旧宮家</span>}
+          {showFormerHouses && <small>順位は1947年の皇籍離脱直前</small>}
+        </div>
 
         <div className="zoom-controls" aria-label="表示倍率">
           <button onClick={() => setZoom((value) => Math.min(1.25, value + 0.1))} aria-label="拡大">＋</button>
@@ -524,7 +528,7 @@ export default function Home() {
         </div>
 
         {selected && (
-          <aside className="profile-card" aria-live="polite" aria-label={`${selected.name}天皇の解説`}>
+          <aside className={`profile-card ${isFemaleEmperor(selected) ? "is-female" : ""}`} aria-live="polite" aria-label={`${selected.name}天皇の解説`}>
             <button className="card-close" onClick={() => setSelectedId("")} aria-label="解説を閉じる">×</button>
             <div className="card-kicker"><span>{displayOrder(selected)}</span><span>{selected.era}</span></div>
             <div className="portrait-seal" aria-hidden="true">
