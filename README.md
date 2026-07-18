@@ -86,8 +86,6 @@ npm test
 
 ## Security Note
 
-A repository-wide review found no OpenAI API keys, account tokens, private keys, personal email addresses, or other personal information in the tracked files or Git history. The Sites project identifier and live-site URL included in this repository are non-secret operational metadata.
-
 The current development toolchain resolves `ws@8.18.0`, which is covered by known WebSocket resource-exhaustion advisories, while the Vite development server is configured to listen on all network interfaces. This affects only a developer running `npm run dev` on a network reachable by untrusted peers; it does not affect the deployed public Worker or expose account credentials. Updating the Vite dependency chain and defaulting the development server to a loopback-only listener are recommended but intentionally deferred.
 
 ## Project Structure
