@@ -66,13 +66,22 @@ button { color: inherit; }
 .search-box {
   height: 42px; border: 1px solid rgba(215, 189, 119, .18); background: rgba(255,255,255,.035);
   display: flex; align-items: center; gap: 10px; padding: 0 12px; border-radius: 4px;
-  transition: border-color .25s, background .25s;
+  transition: border-color .25s, background .25s; position: relative;
 }
 .search-box:focus-within { border-color: rgba(215, 189, 119, .55); background: rgba(255,255,255,.055); }
 .search-box > span { color: var(--gold); font-size: 20px; transform: translateY(-1px); }
 .search-box input { width: 100%; background: none; border: 0; outline: 0; color: #e4e0d5; font-size: 12px; letter-spacing: .05em; }
 .search-box input::placeholder { color: #65706d; }
 .search-box button { border: 0; background: none; color: #78817e; cursor: pointer; }
+.search-box em { min-width: 20px; color: #9b8d61; font: 8px/1 ui-monospace, monospace; font-style: normal; text-align: right; }
+.search-results { position: absolute; z-index: 60; left: -1px; right: -1px; top: 48px; padding: 6px; border: 1px solid rgba(215,189,119,.2); border-radius: 4px; background: rgba(7,10,11,.98); backdrop-filter: blur(20px); box-shadow: 0 24px 60px rgba(0,0,0,.48); }
+.search-results > button { width: 100%; height: auto; display: grid; grid-template-columns: 58px 1fr auto; align-items: center; gap: 9px; padding: 9px 10px; border: 0; border-bottom: 1px solid rgba(215,189,119,.08); text-align: left; cursor: pointer; }
+.search-results > button:last-of-type { border-bottom: 0; }
+.search-results > button:hover, .search-results > button:focus-visible { outline: 0; background: rgba(215,189,119,.08); }
+.search-results > button span { color: #766d50; font: 8px/1 ui-monospace, monospace; }
+.search-results > button strong { color: #cac5b8; font: 500 13px/1 "Yu Mincho", serif; letter-spacing: .08em; }
+.search-results > button small { color: #606966; font: 8px/1 ui-monospace, monospace; }
+.search-results p { margin: 0; padding: 14px 10px; color: #707875; font-size: 10px; }
 
 .lineage-viewport {
   min-height: 0; position: relative; overflow: hidden; cursor: grab; touch-action: none;
@@ -87,9 +96,14 @@ button { color: inherit; }
 }
 .cosmos { position: absolute; inset: 0; pointer-events: none; opacity: .7; background-image: radial-gradient(circle, rgba(215,189,119,.55) 0 1px, transparent 1.5px), radial-gradient(circle, rgba(180,200,197,.22) 0 1px, transparent 1.5px); background-size: 177px 177px, 263px 263px; background-position: 12px 38px, 84px 16px; mask-image: linear-gradient(to bottom, black, transparent 86%); }
 
-.genealogy-scene { position: absolute; left: 0; top: 0; transform-origin: 50% 0; transform-style: preserve-3d; will-change: transform; transition: transform .16s cubic-bezier(.2,.7,.2,1); }
+.genealogy-scene { position: absolute; left: 0; top: 0; transform-origin: 0 0; transform-style: preserve-3d; will-change: transform; transition: transform .16s cubic-bezier(.2,.7,.2,1); }
 .is-dragging .genealogy-scene { transition: none; }
 .grid-plane { position: absolute; inset: -300px -180px 0; background: linear-gradient(rgba(215,189,119,.045) 1px, transparent 1px) 0 0 / 100% 66px, linear-gradient(90deg, rgba(215,189,119,.025) 1px, transparent 1px) 0 0 / 110px 100%; transform: translateZ(-180px); mask-image: radial-gradient(ellipse at 50% 30%, black 15%, transparent 74%); }
+.era-bands { position: absolute; inset: 0; pointer-events: none; transform: translateZ(-40px); }
+.era-bands div { position: absolute; left: 82px; width: 2380px; display: flex; align-items: center; gap: 20px; }
+.era-bands span { width: 94px; flex: 0 0 auto; color: rgba(215,189,119,.42); font: 11px/1 "Yu Mincho", serif; letter-spacing: .28em; text-align: right; }
+.era-bands i { display: block; height: 1px; flex: 1; background: linear-gradient(90deg, rgba(215,189,119,.18), transparent 78%); position: relative; }
+.era-bands i::before { content: ""; position: absolute; width: 5px; height: 5px; left: -2px; top: -2px; border-radius: 50%; background: rgba(215,189,119,.38); }
 
 .edges { position: absolute; inset: 0; overflow: visible; transform: translateZ(0); }
 .edge-shadow { fill: none; stroke: rgba(0,0,0,.6); stroke-width: 9; }
@@ -107,10 +121,12 @@ button { color: inherit; }
 .emperor-node:hover, .emperor-node:focus-visible { outline: 0; border-color: rgba(215,189,119,.65); background: linear-gradient(145deg, rgba(32,33,28,.96), rgba(10,13,14,.92)); }
 .emperor-node.is-active { border-color: rgba(215,189,119,.57); box-shadow: 0 0 28px rgba(215,189,119,.18), 0 20px 40px rgba(0,0,0,.5); }
 .emperor-node.is-selected { border-color: var(--gold-bright); box-shadow: 0 0 17px rgba(239,217,148,.44), 0 0 55px rgba(215,189,119,.18); }
+.emperor-node.is-northern { border-style: dashed; background: linear-gradient(145deg, rgba(24,28,31,.94), rgba(8,11,14,.9)); }
 .emperor-node.is-dimmed { opacity: .12; }
 .node-number { position: absolute; top: 9px; left: 12px; font: 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: #737b78; letter-spacing: .15em; }
 .node-copy { display: block; padding-left: 2px; }
 .node-copy strong { display: block; font: 500 27px/1.15 "Yu Mincho", "Hiragino Mincho ProN", serif; letter-spacing: .07em; color: #d8d3c6; }
+.node-copy strong.node-long { font-size: 19px; letter-spacing: .02em; margin-top: 5px; white-space: nowrap; }
 .node-copy small { display: block; margin-top: 8px; color: #77817e; font-size: 9px; letter-spacing: .16em; }
 .node-dot { position: absolute; width: 7px; height: 7px; border: 1px solid var(--gold); border-radius: 50%; left: calc(50% - 3px); bottom: -4px; background: #0b0e10; }
 .is-active .node-dot { background: var(--gold-bright); box-shadow: 0 0 12px var(--gold-bright); }
@@ -120,6 +136,11 @@ button { color: inherit; }
 
 .depth-labels { position: absolute; left: 25px; top: 0; bottom: 0; z-index: 2; pointer-events: none; opacity: .38; }
 .depth-labels span { position: absolute; writing-mode: vertical-rl; color: var(--gold); font: 10px/1 "Yu Mincho", serif; letter-spacing: .42em; white-space: nowrap; }
+
+.era-nav { position: absolute; z-index: 20; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; align-items: center; background: rgba(7,10,11,.86); border: 1px solid rgba(215,189,119,.14); backdrop-filter: blur(14px); box-shadow: 0 15px 45px rgba(0,0,0,.28); }
+.era-nav button { height: 34px; padding: 0 13px; border: 0; border-right: 1px solid rgba(215,189,119,.1); background: none; color: #777f7b; font: 9px/1 "Yu Mincho", serif; letter-spacing: .08em; white-space: nowrap; cursor: pointer; transition: color .2s, background .2s; }
+.era-nav button:last-child { border-right: 0; }
+.era-nav button:hover, .era-nav button:focus-visible { color: var(--gold-bright); background: rgba(215,189,119,.07); outline: 0; }
 
 .profile-card {
   position: absolute; z-index: 25; right: 28px; top: 28px; width: min(365px, calc(100vw - 56px)); max-height: calc(100% - 56px); overflow: auto;
@@ -140,7 +161,9 @@ button { color: inherit; }
 .portrait-seal i { position: absolute; width: 15px; height: 15px; border: 1px solid var(--gold); border-radius: 50%; top: -8px; background: #101311; box-shadow: 0 0 15px rgba(215,189,119,.35); }
 .profile-card h2 { margin: 0; text-align: center; font: 500 37px/1.1 "Yu Mincho", serif; letter-spacing: .13em; color: #e5dfd1; }
 .profile-card h2 small { font-size: 13px; margin-left: 8px; color: #8e918b; letter-spacing: .1em; }
+.profile-card h2.card-title-long { font-size: 27px; letter-spacing: .04em; }
 .reading { margin: 8px 0 23px; text-align: center; color: #777f7c; font-size: 10px; letter-spacing: .3em; }
+.profile-tag { width: max-content; margin: -13px auto 18px; padding: 5px 9px; border: 1px solid rgba(215,189,119,.22); border-radius: 99px; color: #a99762; background: rgba(215,189,119,.05); font-size: 8px; letter-spacing: .15em; }
 .profile-card dl { margin: 0; border-top: 1px solid rgba(215,189,119,.12); border-bottom: 1px solid rgba(215,189,119,.12); padding: 11px 0; }
 .profile-card dl div { display: grid; grid-template-columns: 54px 1fr; padding: 6px 0; align-items: baseline; }
 .profile-card dt { color: #737b78; font-size: 9px; letter-spacing: .16em; }
@@ -175,6 +198,7 @@ button { color: inherit; }
   .topbar { grid-template-columns: 1fr minmax(210px, 300px); gap: 16px; padding: 0 20px; }
   .chapter-chip { display: none; }
   .profile-card { right: 18px; top: 18px; }
+  .era-nav { max-width: calc(100vw - 36px); overflow-x: auto; left: 18px; transform: none; }
 }
 
 @media (max-width: 640px) {
@@ -187,6 +211,9 @@ button { color: inherit; }
   .search-box input { position: absolute; top: 70px; left: 14px; right: 14px; width: calc(100vw - 28px); height: 42px; padding: 0 14px; background: rgba(8,11,12,.96); border: 1px solid rgba(215,189,119,.22); opacity: 0; pointer-events: none; transition: opacity .2s; }
   .search-box:focus-within input, .search-box input:not(:placeholder-shown) { opacity: 1; pointer-events: auto; }
   .search-box button { display: none; }
+  .search-box em { display: none; }
+  .search-results { position: fixed; left: 14px; right: 14px; top: 122px; }
+  .search-results > button { display: grid; }
   .profile-card { left: 10px; right: 10px; top: auto; bottom: 10px; width: auto; max-height: 62%; padding: 20px 20px 16px; }
   .portrait-seal { width: 73px; height: 73px; margin: 14px auto 12px; }
   .portrait-seal span { font-size: 31px; }
@@ -196,6 +223,8 @@ button { color: inherit; }
   .path-status { display: none; }
   .zoom-controls { left: 12px; top: 16px; }
   .viewport-caption { left: 14px; bottom: 14px; }
+  .era-nav { top: 16px; bottom: auto; left: 156px; right: 12px; max-width: none; }
+  .era-nav button { height: 32px; padding: 0 11px; }
   .source-note { padding: 0 12px; }
   .source-note p { max-width: calc(100vw - 80px); }
 }
