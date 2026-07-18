@@ -34,31 +34,11 @@ export type FormerHouse = {
 // the parent-child structure in the Cabinet Secretariat's 2021 genealogy.
 export const FORMER_LINEAGE_NODES: FormerLineageNode[] = [
   {
-    id: "former-yoshihito",
-    name: "栄仁親王",
-    reading: "よしひと",
-    label: "伏見宮 初代",
-    parent: "n3",
-    x: 2200,
-    y: 12120,
-    note: "北朝第3代・崇光天皇の皇子。伏見宮の祖。",
-  },
-  {
-    id: "former-sadafusa",
-    name: "貞成親王",
-    reading: "さだふさ",
-    label: "伏見宮 第3代",
-    parent: "former-yoshihito",
-    x: 2410,
-    y: 12400,
-    note: "第102代・後花園天皇と旧11宮家に共通する祖先。",
-  },
-  {
     id: "former-sadatsune",
     name: "貞常親王",
     reading: "さだつね",
     label: "伏見宮 第4代",
-    parent: "former-sadafusa",
+    parent: "royal-sadafusa",
     x: 2570,
     y: 12710,
   },
@@ -265,4 +245,3 @@ export const FORMER_HOUSES: FormerHouse[] = [
 ];
 
 export const FORMER_HOUSES_FOCUS = { x: 3050, y: 14680 } as const;
-

@@ -9,6 +9,9 @@
   --female: #df7e8c;
   --female-bright: #f1a0aa;
   --female-dim: #75404a;
+  --royal: #a58bd2;
+  --royal-bright: #d0c0ef;
+  --royal-dim: #51436d;
   --mist: #a9b7b4;
   --former: #79aaa8;
   --former-bright: #b9dfdc;
@@ -102,6 +105,7 @@ button { color: inherit; }
 .search-results > button span { color: #766d50; font: 8px/1 ui-monospace, monospace; }
 .search-results > button strong { color: #cac5b8; font: 500 13px/1 "Yu Mincho", serif; letter-spacing: .08em; }
 .search-results > button.is-female strong { color: var(--female); }
+.search-results > button.is-royal strong { color: var(--royal-bright); }
 .search-results > button small { color: #606966; font: 8px/1 ui-monospace, monospace; }
 .search-results p { margin: 0; padding: 14px 10px; color: #707875; font-size: 10px; }
 
@@ -131,6 +135,8 @@ button { color: inherit; }
 .edge-shadow { fill: none; stroke: rgba(0,0,0,.6); stroke-width: 9; }
 .edge { fill: none; stroke: url(#lineGold); stroke-width: 1.4; vector-effect: non-scaling-stroke; transition: stroke .35s, opacity .35s; }
 .edge-active { stroke: #e9d38c; stroke-width: 2.4; stroke-dasharray: 9 12; animation: lineageFlow 1.15s linear infinite; filter: url(#goldGlow); }
+.edge.royal-edge { stroke: url(#lineRoyal); stroke-width: 1.7; }
+.edge.royal-edge.edge-active { stroke: var(--royal-bright); stroke-width: 2.6; stroke-dasharray: 7 10; filter: url(#royalGlow); }
 .former-edge-shadow { fill: none; stroke: rgba(0,0,0,.7); stroke-width: 10; }
 .former-edge { fill: none; stroke: url(#lineFormer); stroke-width: 1.7; vector-effect: non-scaling-stroke; opacity: .78; transition: opacity .3s, stroke-width .3s; }
 .former-edge-active { stroke: var(--former-bright); stroke-width: 2.8; stroke-dasharray: 7 10; animation: lineageFlow 1.05s linear infinite; filter: url(#formerGlow); opacity: 1; }
@@ -163,6 +169,25 @@ button { color: inherit; }
 .node-orbit { position: absolute; width: 194px; height: 54px; border: 1px solid transparent; border-top-color: rgba(215,189,119,.0); border-radius: 50%; left: -16px; top: 31px; transform: rotate(-8deg); pointer-events: none; }
 .is-selected .node-orbit { border-top-color: rgba(215,189,119,.72); animation: orbit 2.3s linear infinite; }
 @keyframes orbit { to { transform: rotate(352deg); } }
+
+.royal-node {
+  position: absolute; width: 176px; min-height: 92px; padding: 17px 13px 12px; border: 1px solid rgba(165,139,210,.4); border-radius: 3px;
+  background: linear-gradient(145deg, rgba(29,24,42,.96), rgba(10,9,16,.92)); color: #d4cae6; text-align: left; cursor: pointer;
+  transform-style: preserve-3d; box-shadow: 0 17px 36px rgba(0,0,0,.4), inset 0 1px rgba(255,255,255,.035);
+  transition: opacity .3s, border-color .25s, box-shadow .25s, background .25s;
+}
+.royal-node::before { content: ""; position: absolute; inset: 5px; border: 1px solid rgba(208,192,239,.055); pointer-events: none; }
+.royal-node:hover, .royal-node:focus-visible { outline: 0; border-color: rgba(208,192,239,.78); background: linear-gradient(145deg, rgba(40,32,57,.97), rgba(13,11,20,.94)); }
+.royal-node.is-active { border-color: rgba(184,161,224,.72); box-shadow: 0 0 28px rgba(165,139,210,.2), 0 18px 36px rgba(0,0,0,.46); }
+.royal-node.is-selected { border-color: var(--royal-bright); box-shadow: 0 0 20px rgba(208,192,239,.38), 0 0 52px rgba(124,96,169,.2); }
+.royal-node.is-dimmed { opacity: .1; }
+.royal-node > span, .royal-node > strong, .royal-node > small { display: block; position: relative; }
+.royal-node > span { color: #76629c; font: 7px/1 ui-monospace, monospace; letter-spacing: .14em; }
+.royal-node > strong { margin-top: 9px; color: var(--royal-bright); font: 500 17px/1.12 "Yu Mincho", serif; letter-spacing: .06em; white-space: nowrap; }
+.royal-node > strong.is-long { font-size: 13px; letter-spacing: .015em; }
+.royal-node > small { margin-top: 7px; overflow: hidden; color: #786b8e; font-size: 8px; letter-spacing: .12em; text-overflow: ellipsis; white-space: nowrap; }
+.royal-node > i { position: absolute; width: 7px; height: 7px; left: calc(50% - 3px); bottom: -4px; border: 1px solid var(--royal); border-radius: 50%; background: #100d18; }
+.royal-node.is-active > i, .royal-node.is-selected > i { background: var(--royal-bright); box-shadow: 0 0 12px var(--royal-bright); }
 
 .former-house-layer { position: absolute; inset: 0; pointer-events: none; transform: translateZ(22px); }
 .former-zone-title { position: absolute; width: 280px; padding-left: 17px; border-left: 1px solid rgba(121,170,168,.48); }
@@ -285,6 +310,20 @@ button { color: inherit; }
 .historical-notice span { color: #6d9693; font: 7px/1 ui-monospace, monospace; letter-spacing: .1em; }
 .historical-notice p { margin: 0; color: #607b79; font-size: 8px; line-height: 1.55; }
 
+.profile-card.royal-profile { border-color: rgba(165,139,210,.55); background: linear-gradient(155deg, rgba(29,24,42,.98), rgba(9,8,14,.97)); }
+.royal-profile::before { border-color: rgba(208,192,239,.1); }
+.royal-profile .card-kicker { color: var(--royal); }
+.portrait-seal.royal-seal { border-color: rgba(165,139,210,.42); background: radial-gradient(circle, rgba(165,139,210,.17), transparent 67%); }
+.portrait-seal.royal-seal::before, .portrait-seal.royal-seal::after { border-color: rgba(165,139,210,.36); }
+.portrait-seal.royal-seal span { color: var(--royal-bright); text-shadow: 0 0 20px rgba(165,139,210,.3); }
+.portrait-seal.royal-seal i { border-color: var(--royal); box-shadow: 0 0 15px rgba(165,139,210,.42); }
+.royal-profile h2 { color: #ded5ee; }
+.profile-tag.royal-tag { border-color: rgba(165,139,210,.28); color: #ab97ce; background: rgba(165,139,210,.07); }
+.royal-profile dl { border-color: rgba(165,139,210,.16); }
+.royal-source-note { margin-top: 12px; display: grid; grid-template-columns: auto 1fr; gap: 10px; padding: 10px; border-left: 2px solid rgba(165,139,210,.5); background: rgba(165,139,210,.045); }
+.royal-source-note span { color: #8f79b5; font: 7px/1 ui-monospace, monospace; letter-spacing: .1em; }
+.royal-source-note p { margin: 0; color: #80738f; font-size: 8px; line-height: 1.55; }
+
 .viewport-caption { position: absolute; z-index: 20; left: 28px; bottom: 24px; display: flex; align-items: center; gap: 11px; pointer-events: none; }
 .viewport-caption .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 10px var(--gold); }
 .viewport-caption .live-dot.is-former { background: var(--former); box-shadow: 0 0 10px var(--former); }
@@ -301,6 +340,7 @@ button { color: inherit; }
 .lineage-legend i { width: 7px; height: 7px; border-radius: 50%; }
 .lineage-legend .legend-emperor { background: var(--gold); box-shadow: 0 0 7px rgba(215,189,119,.5); }
 .lineage-legend .legend-female { background: var(--female); box-shadow: 0 0 7px rgba(223,126,140,.55); }
+.lineage-legend .legend-royal { background: var(--royal); box-shadow: 0 0 7px rgba(165,139,210,.55); }
 .lineage-legend .legend-former { background: var(--former); box-shadow: 0 0 7px rgba(121,170,168,.5); }
 .lineage-legend small { padding-left: 10px; border-left: 1px solid rgba(255,255,255,.08); color: #4f6664; font-size: 7px; }
 

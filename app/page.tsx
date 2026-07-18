@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { EMPERORS, ERA_JUMPS, type Emperor } from "./emperors";
+import { ROYAL_PEOPLE, type RoyalPerson } from "./royal-lineage";
 import {
   FORMER_HOUSES,
   FORMER_HOUSES_FOCUS,
@@ -18,6 +19,16 @@ const LANE_WIDTH = 180;
 const FORMER_NODE_WIDTH = 164;
 const FORMER_NODE_HEIGHT = 90;
 const FORMER_HOUSE_WIDTH = 340;
+const EMPEROR_NODE_WIDTH = 164;
+const EMPEROR_NODE_HEIGHT = 116;
+const ROYAL_NODE_WIDTH = 176;
+const ROYAL_NODE_HEIGHT = 92;
+
+type LineageEntity = Emperor | RoyalPerson;
+
+function isRoyalPerson(entity: LineageEntity): entity is RoyalPerson {
+  return "kind" in entity && entity.kind === "royal";
+}
 
 function positionFor(emperor: Emperor) {
   const row = emperor.row ?? emperor.order;
@@ -28,11 +39,31 @@ function positionFor(emperor: Emperor) {
   };
 }
 
-function edgePath(from: Emperor, to: Emperor) {
-  const a = positionFor(from);
-  const b = positionFor(to);
+function positionForRoyal(person: RoyalPerson) {
+  return {
+    x: BASE_X + person.lane * LANE_WIDTH + Math.sin(person.row * 0.72) * 30,
+    y: 80 + (person.row - 1) * ROW_HEIGHT,
+    z: 42 + Math.abs(person.lane) * 10,
+  };
+}
+
+function positionForEntity(entity: LineageEntity) {
+  return isRoyalPerson(entity) ? positionForRoyal(entity) : positionFor(entity);
+}
+
+function entityCenter(entity: LineageEntity) {
+  const position = positionForEntity(entity);
+  return {
+    x: position.x + (isRoyalPerson(entity) ? ROYAL_NODE_WIDTH : EMPEROR_NODE_WIDTH) / 2,
+    y: position.y + (isRoyalPerson(entity) ? ROYAL_NODE_HEIGHT : EMPEROR_NODE_HEIGHT) / 2,
+  };
+}
+
+function edgePath(from: LineageEntity, to: LineageEntity) {
+  const a = entityCenter(from);
+  const b = entityCenter(to);
   const bend = Math.max(50, Math.abs(b.y - a.y) * 0.42);
-  return `M ${a.x + 82} ${a.y + 58} C ${a.x + 82} ${a.y + 58 + bend}, ${b.x + 82} ${b.y + 58 - bend}, ${b.x + 82} ${b.y + 58}`;
+  return `M ${a.x} ${a.y} C ${a.x} ${a.y + bend}, ${b.x} ${b.y - bend}, ${b.x} ${b.y}`;
 }
 
 function branchEdgePath(from: { x: number; y: number }, to: { x: number; y: number }) {
@@ -50,6 +81,7 @@ function isFemaleEmperor(emperor: Emperor) {
 
 type SearchResult =
   | { kind: "emperor"; emperor: Emperor }
+  | { kind: "royal"; person: RoyalPerson }
   | { kind: "former"; house: FormerHouse };
 
 export default function Home() {
@@ -57,6 +89,7 @@ export default function Home() {
   const dragRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
   const lastEmperorRef = useRef("126");
   const [selectedId, setSelectedId] = useState("126");
+  const [selectedRoyalId, setSelectedRoyalId] = useState("");
   const [selectedFormerId, setSelectedFormerId] = useState("");
   const [showFormerHouses, setShowFormerHouses] = useState(false);
   const [query, setQuery] = useState("");
@@ -65,46 +98,58 @@ export default function Home() {
   const [isDragging, setIsDragging] = useState(false);
 
   const byId = useMemo(() => new Map(EMPERORS.map((item) => [item.id, item])), []);
+  const royalById = useMemo(() => new Map(ROYAL_PEOPLE.map((item) => [item.id, item])), []);
+  const lineageById = useMemo(() => new Map<string, LineageEntity>([
+    ...EMPERORS.map((item) => [item.id, item] as const),
+    ...ROYAL_PEOPLE.map((item) => [item.id, item] as const),
+  ]), []);
   const formerLineageById = useMemo(() => new Map(FORMER_LINEAGE_NODES.map((item) => [item.id, item])), []);
   const formerHouseById = useMemo(() => new Map(FORMER_HOUSES.map((item) => [item.id, item])), []);
   const selected = selectedId ? byId.get(selectedId) : undefined;
+  const selectedRoyal = selectedRoyalId ? royalById.get(selectedRoyalId) : undefined;
   const selectedFormer = selectedFormerId ? formerHouseById.get(selectedFormerId) : undefined;
   const selectedIndex = selected ? EMPERORS.findIndex((item) => item.id === selected.id) : -1;
 
   const activePath = useMemo(() => {
     const ids = new Set<string>();
-    let cursor = selected;
+    let cursor: LineageEntity | undefined = selected ?? selectedRoyal;
     while (cursor) {
       ids.add(cursor.id);
-      cursor = cursor.parent ? byId.get(cursor.parent) : undefined;
+      cursor = cursor.parent ? lineageById.get(cursor.parent) : undefined;
     }
     return ids;
-  }, [byId, selected]);
+  }, [lineageById, selected, selectedRoyal]);
 
   const activeFormerPath = useMemo(() => {
     const ids = new Set<string>();
-    let cursor: FormerHouse | FormerLineageNode | undefined = selectedFormer;
+    let cursor: FormerHouse | FormerLineageNode | RoyalPerson | Emperor | undefined = selectedFormer;
     while (cursor) {
       ids.add(cursor.id);
-      cursor = formerHouseById.get(cursor.parent) ?? formerLineageById.get(cursor.parent);
+      cursor = formerHouseById.get(cursor.parent)
+        ?? formerLineageById.get(cursor.parent)
+        ?? royalById.get(cursor.parent)
+        ?? byId.get(cursor.parent);
     }
-    if (cursor === undefined && selectedFormer) ids.add("n3");
     return ids;
-  }, [formerHouseById, formerLineageById, selectedFormer]);
+  }, [byId, formerHouseById, formerLineageById, royalById, selectedFormer]);
 
   const searchResults = useMemo<SearchResult[]>(() => {
     const normalized = query.trim().toLowerCase();
     const emperorResults = EMPERORS
       .filter((item) => !normalized || `${item.order}${item.badge ?? ""}${item.name}${item.reading}${item.era}${item.aliases ?? ""}`.toLowerCase().includes(normalized))
       .map((emperor) => ({ kind: "emperor" as const, emperor }));
+    const royalResults = ROYAL_PEOPLE
+      .filter((item) => !normalized || `${item.name}${item.reading}${item.title}${item.connection}`.toLowerCase().includes(normalized))
+      .map((person) => ({ kind: "royal" as const, person }));
     const formerResults = showFormerHouses
       ? FORMER_HOUSES
           .filter((item) => !normalized || `${item.house}${item.reading}${item.founderLine}${item.members.map((member) => `${member.rank}${member.name}${member.reading}`).join("")}`.toLowerCase().includes(normalized))
           .map((house) => ({ kind: "former" as const, house }))
       : [];
-    return [...emperorResults, ...formerResults];
+    return [...emperorResults, ...royalResults, ...formerResults];
   }, [query, showFormerHouses]);
   const emperorMatches = useMemo(() => new Set(searchResults.filter((item) => item.kind === "emperor").map((item) => item.emperor.id)), [searchResults]);
+  const royalMatches = useMemo(() => new Set(searchResults.filter((item) => item.kind === "royal").map((item) => item.person.id)), [searchResults]);
   const formerMatches = useMemo(() => new Set(searchResults.filter((item) => item.kind === "former").map((item) => item.house.id)), [searchResults]);
 
   const centerAt = (x: number, y: number, nextZoom: number, horizontalRatio = 0.43) => {
@@ -122,14 +167,31 @@ export default function Home() {
     centerAt(pos.x + 82, pos.y + 58, nextZoom);
   };
 
+  const centerOnRoyal = (person: RoyalPerson, nextZoom = zoom) => {
+    const pos = positionForRoyal(person);
+    centerAt(pos.x + ROYAL_NODE_WIDTH / 2, pos.y + ROYAL_NODE_HEIGHT / 2, nextZoom);
+  };
+
   const focusNode = (id: string, nextZoom?: number) => {
     const emperor = byId.get(id);
     if (!emperor) return;
     if (nextZoom) setZoom(nextZoom);
     lastEmperorRef.current = id;
     setSelectedId(id);
+    setSelectedRoyalId("");
     setSelectedFormerId("");
     centerOn(emperor, nextZoom ?? zoom);
+  };
+
+  const focusRoyalPerson = (id: string, nextZoom?: number) => {
+    const person = royalById.get(id);
+    if (!person) return;
+    const targetZoom = nextZoom ?? Math.max(zoom, 0.66);
+    setZoom(targetZoom);
+    setSelectedId("");
+    setSelectedRoyalId(id);
+    setSelectedFormerId("");
+    centerOnRoyal(person, targetZoom);
   };
 
   const focusFormerOverview = () => {
@@ -146,6 +208,7 @@ export default function Home() {
     setShowFormerHouses(true);
     setZoom(targetZoom);
     setSelectedId("");
+    setSelectedRoyalId("");
     setSelectedFormerId(id);
     centerAt(house.x + FORMER_HOUSE_WIDTH / 2, house.y + 105, targetZoom, 0.43);
   };
@@ -154,11 +217,13 @@ export default function Home() {
     if (showFormerHouses) {
       setShowFormerHouses(false);
       setSelectedFormerId("");
+      setSelectedRoyalId("");
       focusNode(lastEmperorRef.current || "126", window.innerWidth < 700 ? 0.52 : 0.62);
       return;
     }
     setShowFormerHouses(true);
     setSelectedId("");
+    setSelectedRoyalId("");
     setSelectedFormerId("");
     requestAnimationFrame(focusFormerOverview);
   };
@@ -185,6 +250,7 @@ export default function Home() {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setSelectedId("");
+        setSelectedRoyalId("");
         setSelectedFormerId("");
       }
     };
@@ -193,7 +259,7 @@ export default function Home() {
   }, []);
 
   const profileText = selected
-    ? selected.note ?? `${selected.name}天皇は${displayOrder(selected)}。在位は${selected.reign}で、${selected.era}の皇統に位置します。系図では${selected.parent ? `${byId.get(selected.parent)?.name ?? "先代皇統"}からつながる系譜` : "皇統の起点"}として表示しています。`
+    ? selected.note ?? `${selected.name}天皇は${displayOrder(selected)}。在位は${selected.reign}で、${selected.era}の皇統に位置します。系図では${selected.parent ? `${lineageById.get(selected.parent)?.name ?? "先代皇統"}からつながる系譜` : "皇統の起点"}として表示しています。`
     : "";
 
   return (
@@ -209,7 +275,7 @@ export default function Home() {
         <div className="chapter-chip" aria-label="収録範囲">
           <span>全系譜</span>
           <strong>神武 — 今上</strong>
-          <small>126代 ＋ 北朝{showFormerHouses ? " ＋ 旧11宮家" : ""}</small>
+          <small>126代 ＋ 北朝 ＋ 皇子等{ROYAL_PEOPLE.length}人{showFormerHouses ? " ＋ 旧11宮家" : ""}</small>
         </div>
         <button
           type="button"
@@ -228,6 +294,7 @@ export default function Home() {
             const hit = searchResults[0];
             if (!hit) return;
             if (hit.kind === "emperor") focusNode(hit.emperor.id, Math.max(zoom, 0.62));
+            else if (hit.kind === "royal") focusRoyalPerson(hit.person.id, Math.max(zoom, 0.66));
             else focusFormerHouse(hit.house.id, Math.max(zoom, 0.54));
           }}
         >
@@ -240,10 +307,11 @@ export default function Home() {
               event.preventDefault();
               const hit = searchResults[0];
               if (hit?.kind === "emperor") focusNode(hit.emperor.id, Math.max(zoom, 0.62));
+              if (hit?.kind === "royal") focusRoyalPerson(hit.person.id, Math.max(zoom, 0.66));
               if (hit?.kind === "former") focusFormerHouse(hit.house.id, Math.max(zoom, 0.54));
             }}
-            placeholder={showFormerHouses ? "天皇名・旧宮家・順位から探す" : "天皇名・代数・時代から探す"}
-            aria-label={showFormerHouses ? "天皇名・旧宮家・順位から探す" : "天皇名・代数・時代から探す"}
+            placeholder={showFormerHouses ? "天皇名・皇子・親王・旧宮家から探す" : "天皇名・皇子・親王・王から探す"}
+            aria-label={showFormerHouses ? "天皇名・皇子・親王・旧宮家から探す" : "天皇名・皇子・親王・王から探す"}
           />
           {query && <button type="button" onClick={() => setQuery("")} aria-label="検索をクリア">×</button>}
           {query && <em>{searchResults.length}</em>}
@@ -251,21 +319,28 @@ export default function Home() {
             <div className="search-results" role="listbox" aria-label="検索候補">
               {searchResults.slice(0, 6).map((item) => (
                 <button
-                  key={item.kind === "emperor" ? `emperor-${item.emperor.id}` : `former-${item.house.id}`}
+                  key={item.kind === "emperor" ? `emperor-${item.emperor.id}` : item.kind === "royal" ? `royal-${item.person.id}` : `former-${item.house.id}`}
                   type="button"
-                  className={item.kind === "emperor" && isFemaleEmperor(item.emperor) ? "is-female" : undefined}
+                  className={item.kind === "emperor" && isFemaleEmperor(item.emperor) ? "is-female" : item.kind === "royal" ? "is-royal" : undefined}
                   onClick={() => {
                     if (item.kind === "emperor") focusNode(item.emperor.id, Math.max(zoom, 0.62));
+                    else if (item.kind === "royal") focusRoyalPerson(item.person.id, Math.max(zoom, 0.66));
                     else focusFormerHouse(item.house.id, Math.max(zoom, 0.54));
                     setQuery("");
                   }}
-                  aria-label={item.kind === "emperor" ? `${item.emperor.name}天皇へ移動` : `${item.house.house}へ移動`}
+                  aria-label={item.kind === "emperor" ? `${item.emperor.name}天皇へ移動` : item.kind === "royal" ? `${item.person.name}へ移動` : `${item.house.house}へ移動`}
                 >
                   {item.kind === "emperor" ? (
                     <>
                       <span>{item.emperor.badge ?? `第${item.emperor.order}代`}</span>
                       <strong>{item.emperor.name}</strong>
                       <small>{item.emperor.reign}</small>
+                    </>
+                  ) : item.kind === "royal" ? (
+                    <>
+                      <span>{item.person.title} · 系図接続</span>
+                      <strong>{item.person.name}</strong>
+                      <small>{item.person.reading}</small>
                     </>
                   ) : (
                     <>
@@ -345,6 +420,10 @@ export default function Home() {
                 <stop offset="0" stopColor="#8fc4c0" stopOpacity=".78" />
                 <stop offset="1" stopColor="#365f62" stopOpacity=".3" />
               </linearGradient>
+              <linearGradient id="lineRoyal" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stopColor="#b7a1df" stopOpacity=".82" />
+                <stop offset="1" stopColor="#584875" stopOpacity=".32" />
+              </linearGradient>
               <filter id="goldGlow" x="-50%" y="-50%" width="200%" height="200%">
                 <feGaussianBlur stdDeviation="7" result="blur" />
                 <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
@@ -353,26 +432,33 @@ export default function Home() {
                 <feGaussianBlur stdDeviation="5" result="blur" />
                 <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
               </filter>
+              <filter id="royalGlow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="5" result="blur" />
+                <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+              </filter>
             </defs>
-            {EMPERORS.filter((item) => item.parent).map((item) => {
-              if (showFormerHouses && item.id === "102") return null;
-              const parent = byId.get(item.parent!);
+            {[...EMPERORS, ...ROYAL_PEOPLE].filter((item) => item.parent).map((item) => {
+              const parent = lineageById.get(item.parent!);
               if (!parent) return null;
               const active = activePath.has(item.id) && activePath.has(parent.id);
+              const royalSegment = isRoyalPerson(item) || isRoyalPerson(parent);
               return (
                 <g key={`${parent.id}-${item.id}`}>
                   <path className="edge-shadow" d={edgePath(parent, item)} />
-                  <path className={`edge ${active ? "edge-active" : ""}`} d={edgePath(parent, item)} />
+                  <path className={`edge ${royalSegment ? "royal-edge" : ""} ${active ? "edge-active" : ""}`} d={edgePath(parent, item)} />
                 </g>
               );
             })}
             {showFormerHouses && [...FORMER_LINEAGE_NODES, ...FORMER_HOUSES].map((item) => {
               const emperorParent = byId.get(item.parent);
+              const royalParent = royalById.get(item.parent);
               const lineageParent = formerLineageById.get(item.parent);
               const houseParent = formerHouseById.get(item.parent);
               const from = emperorParent
                 ? (() => { const pos = positionFor(emperorParent); return { x: pos.x + 82, y: pos.y + 116 }; })()
-                : lineageParent
+                : royalParent
+                  ? (() => { const pos = positionForRoyal(royalParent); return { x: pos.x + ROYAL_NODE_WIDTH / 2, y: pos.y + ROYAL_NODE_HEIGHT }; })()
+                  : lineageParent
                   ? { x: lineageParent.x + FORMER_NODE_WIDTH / 2, y: lineageParent.y + (lineageParent.kind === "gap" ? 54 : FORMER_NODE_HEIGHT) }
                   : houseParent
                     ? { x: houseParent.x + FORMER_HOUSE_WIDTH / 2, y: houseParent.y + 190 }
@@ -390,24 +476,6 @@ export default function Home() {
                 </g>
               );
             })}
-            {showFormerHouses && (() => {
-              const commonAncestor = formerLineageById.get("former-sadafusa");
-              const goHanazono = byId.get("102");
-              if (!commonAncestor || !goHanazono) return null;
-              const emperorPos = positionFor(goHanazono);
-              return (
-                <g className="common-ancestor-edge">
-                  <path className="edge-shadow" d={branchEdgePath(
-                    { x: commonAncestor.x + FORMER_NODE_WIDTH / 2, y: commonAncestor.y + FORMER_NODE_HEIGHT },
-                    { x: emperorPos.x + 82, y: emperorPos.y },
-                  )} />
-                  <path className="edge" d={branchEdgePath(
-                    { x: commonAncestor.x + FORMER_NODE_WIDTH / 2, y: commonAncestor.y + FORMER_NODE_HEIGHT },
-                    { x: emperorPos.x + 82, y: emperorPos.y },
-                  )} />
-                </g>
-              );
-            })()}
           </svg>
 
           {EMPERORS.map((emperor) => {
@@ -424,6 +492,7 @@ export default function Home() {
                   event.stopPropagation();
                   lastEmperorRef.current = emperor.id;
                   setSelectedId(emperor.id);
+                  setSelectedRoyalId("");
                   setSelectedFormerId("");
                 }}
                 aria-label={`${spokenOrder} ${emperor.name}天皇。${emperor.reign}`}
@@ -435,6 +504,32 @@ export default function Home() {
                   <small>{emperor.reading}</small>
                 </span>
                 <span className="node-dot" aria-hidden="true" />
+              </button>
+            );
+          })}
+
+          {ROYAL_PEOPLE.map((person) => {
+            const pos = positionForRoyal(person);
+            const active = activePath.has(person.id) || activeFormerPath.has(person.id);
+            const dimmed = query.trim() !== "" && !royalMatches.has(person.id);
+            return (
+              <button
+                key={person.id}
+                type="button"
+                className={`royal-node ${active ? "is-active" : ""} ${selectedRoyalId === person.id ? "is-selected" : ""} ${dimmed ? "is-dimmed" : ""}`}
+                style={{ left: pos.x, top: pos.y, transform: `translateZ(${pos.z}px)` }}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setSelectedId("");
+                  setSelectedRoyalId(person.id);
+                  setSelectedFormerId("");
+                }}
+                aria-label={`${person.name}。${person.title}。${person.connection}`}
+              >
+                <span>{person.title} · 宮内庁系図</span>
+                <strong className={person.name.length > 7 ? "is-long" : ""}>{person.name}</strong>
+                <small>{person.reading}</small>
+                <i aria-hidden="true" />
               </button>
             );
           })}
@@ -474,6 +569,7 @@ export default function Home() {
                     onClick={(event) => {
                       event.stopPropagation();
                       setSelectedId("");
+                      setSelectedRoyalId("");
                       setSelectedFormerId(house.id);
                     }}
                     aria-label={`${house.house}。${house.members.length ? `1947年の男子皇位継承順位は${house.members.map((member) => `第${member.rank}位${member.name}`).join("、")}` : house.status}`}
@@ -516,6 +612,7 @@ export default function Home() {
         <div className="lineage-legend" aria-label="色分けの凡例">
           <span><i className="legend-emperor" />歴代天皇</span>
           <span><i className="legend-female" />女性天皇名（8人・10代）</span>
+          <span><i className="legend-royal" />皇子・親王・王など（{ROYAL_PEOPLE.length}人）</span>
           {showFormerHouses && <span><i className="legend-former" />旧宮家</span>}
           {showFormerHouses && <small>順位は1947年の皇籍離脱直前</small>}
         </div>
@@ -548,6 +645,26 @@ export default function Home() {
               <button disabled={selectedIndex <= 0} onClick={() => focusNode(EMPERORS[selectedIndex - 1].id)}>← 前へ</button>
               <button disabled={selectedIndex < 0 || selectedIndex >= EMPERORS.length - 1} onClick={() => focusNode(EMPERORS[selectedIndex + 1].id)}>次へ →</button>
             </div>
+          </aside>
+        )}
+
+        {selectedRoyal && (
+          <aside className="profile-card royal-profile" aria-live="polite" aria-label={`${selectedRoyal.name}の解説`}>
+            <button className="card-close" onClick={() => setSelectedRoyalId("")} aria-label="解説を閉じる">×</button>
+            <div className="card-kicker"><span>宮内庁「天皇系図」</span><span>第{selectedRoyal.sourcePage}頁</span></div>
+            <div className="portrait-seal royal-seal" aria-hidden="true">
+              <span>{selectedRoyal.name.slice(0, 1)}</span>
+              <i />
+            </div>
+            <h2 className={selectedRoyal.name.length > 7 ? "card-title-long" : ""}>{selectedRoyal.name}</h2>
+            <p className="reading">{selectedRoyal.reading}</p>
+            <p className="profile-tag royal-tag">{selectedRoyal.title} · 系図接続人物</p>
+            <dl>
+              <div><dt>区分</dt><dd>{selectedRoyal.title}</dd></div>
+              <div><dt>接続</dt><dd>{selectedRoyal.connection}</dd></div>
+            </dl>
+            <p className="profile-note">{selectedRoyal.note}</p>
+            <div className="royal-source-note"><span>出典</span><p>宮内庁「天皇系図」掲載の表記と接続関係に基づきます。</p></div>
           </aside>
         )}
 
@@ -585,7 +702,7 @@ export default function Home() {
       </section>
 
       <footer className="source-note">
-        <p>宮内庁「天皇系図」と内閣官房「制度的、歴史的観点等からの調査・研究」を基礎に再構成。中間当主は一部省略。</p>
+        <p>宮内庁「天皇系図」を基礎に、系図上の皇子・親王・王なども収録。旧宮家の中間当主は一部省略。</p>
         <nav aria-label="出典">
           <a href="https://www.kunaicho.go.jp/learn/about/kosei/keizu.html" target="_blank" rel="noreferrer">宮内庁 ↗</a>
           <a href="https://www.cas.go.jp/jp/seisaku/taii_tokurei/dai11/siryou2.pdf" target="_blank" rel="noreferrer">内閣官房 ↗</a>
