@@ -87,6 +87,7 @@ type SearchResult =
 export default function Home() {
   const viewportRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
+  const viewportWidthRef = useRef(0);
   const lastEmperorRef = useRef("126");
   const [selectedId, setSelectedId] = useState("126");
   const [selectedRoyalId, setSelectedRoyalId] = useState("");
@@ -236,11 +237,23 @@ export default function Home() {
       setZoom(nextZoom);
       if (present) centerOn(present, nextZoom);
     };
-    const frame = requestAnimationFrame(placeAtPresent);
-    window.addEventListener("resize", placeAtPresent);
+
+    const frame = requestAnimationFrame(() => {
+      viewportWidthRef.current = window.innerWidth;
+      placeAtPresent();
+    });
+    const handleResize = () => {
+      const width = window.innerWidth;
+      // Mobile Safari changes only the viewport height when its browser chrome
+      // appears or disappears. Re-centering in that case looks like a reload.
+      if (Math.abs(width - viewportWidthRef.current) < 2) return;
+      viewportWidthRef.current = width;
+      placeAtPresent();
+    };
+    window.addEventListener("resize", handleResize);
     return () => {
       cancelAnimationFrame(frame);
-      window.removeEventListener("resize", placeAtPresent);
+      window.removeEventListener("resize", handleResize);
     };
     // The immutable graph map is intentionally the only dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
